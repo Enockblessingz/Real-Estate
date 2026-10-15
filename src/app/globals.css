@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand ────────────────────────────────────────────────────────── */
+  --color-brand-50:  #e9f5f1;
+  --color-brand-100: #c9e7dd;
+  --color-brand-mid: #4db09a;
+  --color-brand:     #1e7a63;
+  --color-brand-dark:#0e3f35;
+
+  /* ── Neutrals ─────────────────────────────────────────────────────── */
+  --color-ink:   #0a0a0a;
+  --color-paper: #ffffff;
+  --color-mist:  #f5f7f6;
+
+  /* ── Type ─────────────────────────────────────────────────────────── */
+  --font-sans:    var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Breakpoint extension for hero heights used in existing design ── */
+  --spacing-hero-mobile: 40rem;
+  --spacing-hero-tablet: 42.5rem;
+  --spacing-hero-desktop: 45rem;
+}
+
+/* ── Keyframes referenced in the shipped HTML ─────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes progressBar {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--color-brand);
+    color: white;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+
+  /* Scrollbar polish */
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-brand) 30%, transparent);
+    border-radius: 9999px;
+  }
+}
