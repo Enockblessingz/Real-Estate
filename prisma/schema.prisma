@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// USERS & AUTH
+// ─────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  AGENT
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  country       String?
+  avatarUrl     String?
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  properties    Property[]
+  inquiries     Inquiry[]
+  sessions      Session[]
+  transactions  Transaction[]
+  accesses      PropertyAccess[]
+  auditLogs     AuditLog[]
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PROPERTIES
+// ─────────────────────────────────────────────────────────────────────────
+
+enum TransactionType {
+  SALE
+  RENT
+}
+
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  VILLA
+  LAND
+  COMMERCIAL
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  REJECTED
+  SOLD
+  RENTED
+  ARCHIVED
+}
+
+model Property {
+  id              String          @id @default(cuid())
+  slug            String          @unique
+  title           String
+  description     String          @db.Text
+  price           Decimal         @db.Decimal(14, 2)
+  currency        String          @default("RWF")
+  transactionType TransactionType
+  propertyType    PropertyType
+  bedrooms        Int?
+  bathrooms       Int?
+  areaSqm         Int?
+  province        String
+  district        String
+  sector          String?
+  village         String?
+  latitude        Float?
+  longitude       Float?
+  amenities       String[]
+  status          ListingStatus   @default(PENDING)
+  featured        Boolean         @default(false)
+  featuredUntil   DateTime?
+  viewCount       Int             @default(0)
+  ownerId         String
+  owner           User            @relation(fields: [ownerId], references: [id])
+  publishedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  images          PropertyImage[]
+  inquiries       Inquiry[]
+  accesses        PropertyAccess[]
+  transactions    Transaction[]
+
+  @@index([status, featured, publishedAt])
+  @@index([province, district])
+  @@index([transactionType, propertyType])
+  @@index([ownerId])
+  @@index([price])
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  alt        String?
+  order      Int      @default(0)
+  isCover    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId, order])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// INQUIRIES
+// ─────────────────────────────────────────────────────────────────────────
+
+model Inquiry {
+  id         String    @id @default(cuid())
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  email      String
+  phone      String?
+  subject    String
+  message    String    @db.Text
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([propertyId])
+  @@index([isRead, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MONETIZATION
+// ─────────────────────────────────────────────────────────────────────────
+
+enum TransactionPurpose {
+  PROPERTY_ACCESS
+  FEATURED_LISTING
+  SUBSCRIPTION
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+model Transaction {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id])
+  propertyId   String?
+  property     Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  amount       Decimal            @db.Decimal(14, 2)
+  currency     String             @default("RWF")
+  purpose      TransactionPurpose
+  status       TransactionStatus  @default(PENDING)
+  provider     String
+  providerRef  String?            @unique
+  externalRef  String             @unique
+  metadata     Json?
+  completedAt  DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  access       PropertyAccess?
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([providerRef])
+}
+
+model PropertyAccess {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId    String
+  property      Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  transactionId String      @unique
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  grantedAt     DateTime    @default(now())
+  expiresAt     DateTime?
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AUDIT
+// ─────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+}
